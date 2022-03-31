@@ -1,0 +1,35 @@
+amq_receive:
+  broker:
+    address: "localhost"
+    port: 5672
+  credentials:
+    username: "admin"
+    password: "rabbit"
+amq_forward:
+  broker:
+    address: 192.168.1.139
+    port: 5672
+  credentials:
+    username: "admin"
+    password: "rabbit"
+pub_sub:
+  - pub_sub_1:
+        receive:
+          exchange: "generator_robot"
+          exchange_type: "fanout"
+          queue: "generator_robot_rk"
+        forward:
+          exchange: "generator_robot"
+          exchange_type: "fanout"
+          queue: "generator_robot_rk"
+  - pub_sub_2:
+        receive:
+          exchange: "generator_personnel"
+          exchange_type: "fanout"
+          queue: "generator_personnel_rk"
+        forward:
+          exchange: "generator_personnel"
+          exchange_type: "fanout"
+          queue: "generator_personnel_rk"
+          
+
