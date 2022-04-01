@@ -6,38 +6,35 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Config struct {
-	AmqReceive struct {
-		Broker struct {
-			Address string
-			Port    uint16
-		}
-		Credentials struct {
-			Username string
-			Password string
-		}
-	} `yaml:"amq_receive"`
+type BrokerConfig struct {
+	Address string
+	Port   uint16
+}
 
-	AmqForward struct {
-		Broker struct {
-			Address string
-			Port    uint16
-		}
-		Credentials struct {
-			Username string
-			Password string
-		}
-	} `yaml:"amq_forward"`
-	PubSub []map[string]struct{Receive struct {
-		Exchange     string
-		ExchangeType string `yaml:"exchange_type"`
-		Queue        string
-	}
-	Forward struct {
-		Exchange     string
-		ExchangeType string `yaml:"exchange_type"`
-		Queue        string
-	}} `yaml:"pub_sub"`
+type CredentialsConfig struct {
+	Username string
+	Password string
+}
+
+type AmqConnectionConfig struct {
+	Broker BrokerConfig
+	Credentials CredentialsConfig
+}
+
+type AmqChannelConfig struct {
+	Exchange string
+	ExchangeType string `yaml:"exchange_type"`
+	Queue string
+}
+
+type PubSubConfig struct {
+	Source AmqChannelConfig
+	Target AmqChannelConfig
+}
+type Config struct {
+	AmqSource AmqConnectionConfig `yaml:"amq_source"`
+	AmqTarget AmqConnectionConfig `yaml:"amq_target"`
+	PubSub []map[string]PubSubConfig `yaml:"pub_sub"`
 }
 
 func Parse(file string) (*Config, error) {
