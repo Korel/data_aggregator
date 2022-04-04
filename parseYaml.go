@@ -8,7 +8,7 @@ import (
 
 type BrokerConfig struct {
 	Address string
-	Port   uint16
+	Port    uint16
 }
 
 type CredentialsConfig struct {
@@ -17,24 +17,31 @@ type CredentialsConfig struct {
 }
 
 type AmqConnectionConfig struct {
-	Broker BrokerConfig
+	Broker      BrokerConfig
 	Credentials CredentialsConfig
 }
 
 type AmqChannelConfig struct {
-	Exchange string
+	Exchange     string
 	ExchangeType string `yaml:"exchange_type"`
-	Queue string
+	Queue        string
 }
 
 type PubSubConfig struct {
 	Source AmqChannelConfig
 	Target AmqChannelConfig
 }
+
+type RedisConfig struct {
+	Address string
+	Port    uint16
+	Credentials CredentialsConfig
+}
 type Config struct {
-	AmqSource AmqConnectionConfig `yaml:"amq_source"`
-	AmqTarget AmqConnectionConfig `yaml:"amq_target"`
-	PubSub []map[string]PubSubConfig `yaml:"pub_sub"`
+	Redis RedisConfig
+	AmqSource AmqConnectionConfig       `yaml:"amq_source"`
+	AmqTarget AmqConnectionConfig       `yaml:"amq_target"`
+	PubSub    []map[string]PubSubConfig `yaml:"pub_sub"`
 }
 
 func Parse(file string) (*Config, error) {

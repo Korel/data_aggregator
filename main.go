@@ -1,11 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"github.com/go-redis/redis/v8"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+type RedisConnection struct {
+	RedisClient  *redis.Client
+	RedisContext context.Context
+}
 
 func failOnError(err error, str string) {
 	if err != nil {
@@ -13,25 +20,36 @@ func failOnError(err error, str string) {
 	}
 }
 
-func setupRedis(config *Config) {
-	//TODO: find a library and implement
+func setupRedis(config *Config) RedisConnection {
+	redisConnection := RedisConnection{
+		RedisClient: redis.NewClient(&redis.Options{
+			Addr:     fmt.Sprintf("%s:%d", config.Redis.Address, config.Redis.Port),
+			Password: config.Redis.Credentials.Password,
+			DB:       0, // use default DB
+		}),
+		RedisContext: context.Background(),
+	}
+	_, err := redisConnection.RedisClient.Ping(redisConnection.RedisContext).Result()
+	failOnError(err, "Failed to connect to redis server")
+	log.Printf("Connected to redis server -> %s", fmt.Sprintf("%s:%d", config.Redis.Address, config.Redis.Port))
+	return redisConnection
 }
 
-func setupRabbitmq(config *Config, consumeCallback func(*PubSubConfig, <-chan amqp.Delivery, *amqp.Channel)) {
+func setupRabbitmq(config *Config, redisConnection *RedisConnection, consumeCallback func(*PubSubConfig, <-chan amqp.Delivery, *amqp.Channel, *RedisConnection)) {
 	sourceConn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/",
 		config.AmqSource.Credentials.Username,
 		config.AmqSource.Credentials.Password,
 		config.AmqSource.Broker.Address,
 		config.AmqSource.Broker.Port))
-	failOnError(err, "Failed to connect to source RabbitMQ")
-	log.Printf("Connected to source RabbitMQ")
+	failOnError(err, fmt.Sprintf("Failed to connect to source RabbitMQ address -> %s:%d", config.AmqSource.Broker.Address, config.AmqSource.Broker.Port))
+	log.Printf("Connected to source RabbitMQ address -> %s:%d", config.AmqSource.Broker.Address, config.AmqSource.Broker.Port)
 	targetConn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/",
 		config.AmqTarget.Credentials.Username,
 		config.AmqTarget.Credentials.Password,
 		config.AmqTarget.Broker.Address,
 		config.AmqTarget.Broker.Port))
-	failOnError(err, "Failed to connect to target RabbitMQ")
-	log.Printf("Connected to target RabbitMQ")
+	failOnError(err, fmt.Sprintf("Failed to connect to target RabbitMQ address -> %s:%d", config.AmqTarget.Broker.Address, config.AmqTarget.Broker.Port))
+	log.Printf("Connected to target RabbitMQ address -> %s:%d", config.AmqTarget.Broker.Address, config.AmqTarget.Broker.Port)
 	// Create pub_sub channels, declare exchanges and queues
 	for _, pubSub := range config.PubSub {
 		for _, pb := range pubSub {
@@ -118,17 +136,16 @@ func setupRabbitmq(config *Config, consumeCallback func(*PubSubConfig, <-chan am
 			failOnError(err, "Failed to start consuming the source queue")
 			log.Printf("Starting to consume source queue: %s", pb.Source.Queue)
 
-			go consumeCallback(&pb, deliveries, targetChannel)
+			go consumeCallback(&pb, deliveries, targetChannel, redisConnection)
 		}
 	}
 }
 
-func rabbitmqConsumeCallback(pb *PubSubConfig, deliveries <-chan amqp.Delivery, targetChannel *amqp.Channel) {
+func rabbitmqConsumeCallback(pb *PubSubConfig, deliveries <-chan amqp.Delivery, targetChannel *amqp.Channel, redisConnection *RedisConnection) {
 	for d := range deliveries {
 		if err := d.Ack(false); err != nil {
 			log.Fatalf("Error acknowledging delivery: %s", err)
 		}
-
 		// TODO: Filtering will be implemented here
 		// Filter(d.Body)
 
@@ -148,12 +165,10 @@ func rabbitmqConsumeCallback(pb *PubSubConfig, deliveries <-chan amqp.Delivery, 
 func main() {
 	config, err := Parse("config.yaml")
 	failOnError(err, "Failed to parse config file")
-	log.Printf("RabbitMQ Source Address: %s\n", config.AmqSource.Broker.Address)
-	log.Printf("RabbitMQ Target Address: %s\n", config.AmqTarget.Broker.Address)
 
-	setupRedis(config)
-
-	setupRabbitmq(config, rabbitmqConsumeCallback)
+	redisConnection := setupRedis(config)
+	failOnError(err, "Failed to get redis key")
+	setupRabbitmq(config, &redisConnection, rabbitmqConsumeCallback)
 
 	// The consuming and forwarding are done in goroutines.
 	select {} // block foreve
