@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/go-redis/redis/v8"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -163,7 +164,11 @@ func rabbitmqConsumeCallback(pb *PubSubConfig, deliveries <-chan amqp.Delivery, 
 }
 
 func main() {
-	config, err := Parse("config.yaml")
+	if len(os.Args) != 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <config.yaml>\n", os.Args[0])
+		os.Exit(1)
+	}
+	config, err := Parse(os.Args[1])
 	failOnError(err, "Failed to parse config file")
 
 	redisConnection := setupRedis(config)
