@@ -33,12 +33,12 @@ type PubSubConfig struct {
 }
 
 type RedisConfig struct {
-	Address string
-	Port    uint16
+	Address     string
+	Port        uint16
 	Credentials CredentialsConfig
 }
 type Config struct {
-	Redis RedisConfig
+	Redis     RedisConfig
 	AmqSource AmqConnectionConfig       `yaml:"amq_source"`
 	AmqTarget AmqConnectionConfig       `yaml:"amq_target"`
 	PubSub    []map[string]PubSubConfig `yaml:"pub_sub"`
