@@ -44,7 +44,7 @@ type Config struct {
 	PubSub    []map[string]PubSubConfig `yaml:"pub_sub"`
 }
 
-func Parse(file string) (*Config, error) {
+func ParseConfig(file string) (*Config, error) {
 	var c Config
 	yamlFile, err := ioutil.ReadFile(file)
 	if err != nil {
