@@ -172,7 +172,6 @@ func main() {
 	failOnError(err, "Failed to parse config file")
 
 	redisConnection := setupRedis(config)
-	failOnError(err, "Failed to get redis key")
 	setupRabbitmq(config, &redisConnection, rabbitmqConsumeCallback)
 
 	// The consuming and forwarding are done in goroutines.
